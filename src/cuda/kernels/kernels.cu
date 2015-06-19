@@ -20,3 +20,4 @@
 #include "sigmoid.impl"
 
 #include "l1.impl"
+#include "stdnormal.impl"
