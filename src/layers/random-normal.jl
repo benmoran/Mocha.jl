@@ -3,7 +3,7 @@
   name :: String = "random-normal",
   (tops :: Vector{Symbol} = Symbol[], length(tops) > 0),
   (output_dims :: Vector{Int} = Int[], length(output_dims) >0),
-  (eltype :: DataType = Float64),
+  (eltype :: DataType = Float32),
   (batch_sizes :: Vector{Int} = Int[], (length(batch_sizes)==length(tops))),
 )
 
