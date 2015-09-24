@@ -62,7 +62,7 @@ function forward(backend::CPUBackend, state::GaussianKLLossLayerState, inputs::V
   nn = length(inputs[1])
   mu = inputs[1].data
 
-  sigma = inputs[2].data
+  sigma = clamp(inputs[2].data, eps(data_type), inf(data_type))
 
   state.loss = zero(data_type)
   for i in 1:nn
@@ -84,8 +84,7 @@ function backward(backend::CPUBackend, state::GaussianKLLossLayerState,
   n = get_num(inputs[1])
   nn = length(inputs[1])
   mu = inputs[1].data
-  sigma = inputs[2].data
-
+  sigma = clamp(inputs[2].data, eps(data_type), inf(data_type))
   if isa(diffs[1], CPUBlob)
     diffs[1].data[:] = mu
     diffs[1].data[:] *= state.layer.weight / n
