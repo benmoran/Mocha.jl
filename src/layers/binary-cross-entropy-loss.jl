@@ -27,7 +27,8 @@ function shutdown(backend::Backend, state::BinaryCrossEntropyLossLayerState)
 end
 
 function forward(backend::CPUBackend, state::BinaryCrossEntropyLossLayerState, inputs::Vector{Blob})
-  pred = vec(inputs[1].data)
+  T = eltype(inputs[1])
+  pred = clamp(vec(inputs[1].data), eps(T), 1 - eps(T))
   label = vec(inputs[2].data)
   loss = BLAS.dot(log(pred), label) + BLAS.dot(log1p(-pred), (1-label))
 
@@ -36,14 +37,16 @@ function forward(backend::CPUBackend, state::BinaryCrossEntropyLossLayerState, i
 end
 
 function backward(backend::CPUBackend, state::BinaryCrossEntropyLossLayerState, inputs::Vector{Blob}, diffs::Vector{Blob})
+  if any([isa(diff, CPUBlob) for diff in diffs])
+    label = inputs[2].data
+    T = eltype(inputs[1])
+    pred = clamp(reshape(inputs[1].data, size(label)), eps(T), 1 - eps(T))
+  end
+
   diff = diffs[1]
   if isa(diff, CPUBlob)
-
     # Diffs is df/dloss
     # we want to multiply this by dloss/dpred and dl
-
-    label = inputs[2].data
-    pred  = reshape(inputs[1].data, size(label))
 
     # l = -w sum_i log(p_i) y_i + (log(1-p_i)(1-y_i)
     # dl/dp_i = -w ( y_i/p_i - ((1-y_i)(1-p_i) )
@@ -56,10 +59,11 @@ function backward(backend::CPUBackend, state::BinaryCrossEntropyLossLayerState, 
     dl_dpred = (label ./ pred) - ((1-label) ./ (1-pred)) # dloss/d?
     BLAS.axpy!(n, a, dl_dpred, 1, diff.data, 1)
   end
+
   diff = diffs[2]
   if isa(diff, CPUBlob)
     dl_dlabel = log(pred ./ (1-pred))
-    erase!(diff) # is this correct? square-loss does it
+    erase!(diff)
     BLAS.axpy!(n, a, dl_dlabel, 1, diff.data, 1)
   end
 end
